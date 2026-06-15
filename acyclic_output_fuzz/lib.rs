@@ -4,9 +4,9 @@ mod graph_cycle_checker;
 
 use output_fuzz_common::{
     GraphCase, MAX_EXTERNAL_MODULES, MAX_NODES, acyclic_graph_case_strategy, build_repl_url,
-    bundler_options_for_case, create_fixture_dir, encode_case_spec, external_module_name,
-    is_cjs_node, materialize_graph_modules, module_filename,
-    preserve_entry_signatures_from_index,
+    bundler_options_for_case, create_fixture_dir, encode_case_spec,
+    external_default_local_name, external_module_name, is_cjs_node, materialize_graph_modules,
+    module_filename, preserve_entry_signatures_from_index,
 };
 use oxc::allocator::Allocator as OxcAllocator;
 use oxc::parser::{ParseOptions, Parser};
@@ -167,6 +167,7 @@ fn dynamic_hub_case_strategy() -> impl Strategy<Value = GraphCase> {
                     reexport_static_edges: Vec::new(),
                     external_module_count,
                     external_dynamic_edges,
+                    external_static_default_edges: Vec::new(),
                     preserve_entry_signatures,
                     strict_execution_order,
                     treeshake,
@@ -539,6 +540,17 @@ fn format_failure_message(
         .iter()
         .map(|(from, ext)| format!("- `node{from}` -> `{}`", external_module_name(*ext)))
         .collect::<Vec<_>>();
+    let input_external_static_default_edge_lines = case
+        .external_static_default_edges
+        .iter()
+        .map(|(from, ext, variant)| {
+            format!(
+                "- `node{from}` -> `{}` as `{}`",
+                external_module_name(*ext),
+                external_default_local_name(*ext, *variant),
+            )
+        })
+        .collect::<Vec<_>>();
     let output_file_lines = output_files
         .iter()
         .map(|file| format!("- `{file}`"))
@@ -570,6 +582,12 @@ fn format_failure_message(
     } else {
         input_external_dynamic_edge_lines.join("\n")
     };
+    let input_external_static_default_edges =
+        if input_external_static_default_edge_lines.is_empty() {
+            "- (none)".to_string()
+        } else {
+            input_external_static_default_edge_lines.join("\n")
+        };
     let output_files_markdown = if output_file_lines.is_empty() {
         "- (none)".to_string()
     } else {
@@ -609,6 +627,8 @@ fn format_failure_message(
             "{input_dynamic_edges}\n\n",
             "### Input External Dynamic Edges\n",
             "{input_external_dynamic_edges}\n\n",
+            "### Input External Static Default Imports\n",
+            "{input_external_static_default_edges}\n\n",
             "### Output Files\n",
             "{output_files}\n\n",
             "### Output Static Edges\n",
@@ -636,6 +656,7 @@ fn format_failure_message(
         input_reexport_edges = input_reexport_edges,
         input_dynamic_edges = input_dynamic_edges,
         input_external_dynamic_edges = input_external_dynamic_edges,
+        input_external_static_default_edges = input_external_static_default_edges,
         output_files = output_files_markdown,
         output_static_edges = output_static_edges,
         output_static_cycle = output_static_cycle,

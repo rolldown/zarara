@@ -32,7 +32,7 @@ When a failure is found, the test prints markdown with:
 | Test | What it checks |
 |------|---------------|
 | `acyclic_input_produces_acyclic_output` | Acyclic input graphs produce acyclic output chunk-import graphs, valid JS, entry export preservation. |
-| `deterministic_output` | Bundling the same graph twice produces identical chunks (filenames, code, imports, exports) |
+| `deterministic_output` | Bundling the same graph twice produces identical chunks (filenames, code, imports, exports). Covers [rolldown#9754](https://github.com/rolldown/rolldown/issues/9754) via static default imports from the same external module under different local names per importer. |
 
 ## Run Locally
 
