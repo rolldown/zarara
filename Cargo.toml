@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["acyclic_output_fuzz"]
+members = ["acyclic_output_fuzz", "deterministic_output_fuzz", "output_fuzz_common"]
 exclude = ["rolldown"]
 
 [workspace.dependencies]
