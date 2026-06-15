@@ -4,9 +4,9 @@ mod graph_cycle_checker;
 
 use output_fuzz_common::{
     GraphCase, MAX_EXTERNAL_MODULES, MAX_NODES, acyclic_graph_case_strategy, build_repl_url,
-    bundler_options_for_case, create_fixture_dir, encode_case_spec,
-    external_default_local_name, external_module_name, is_cjs_node, materialize_graph_modules,
-    module_filename, preserve_entry_signatures_from_index,
+    bundler_options_for_case, create_fixture_dir, external_default_local_name,
+    external_module_name, fixture_command, is_cjs_node, materialize_graph_modules, module_filename,
+    preserve_entry_signatures_from_index,
 };
 use oxc::allocator::Allocator as OxcAllocator;
 use oxc::parser::{ParseOptions, Parser};
@@ -556,12 +556,8 @@ fn format_failure_message(
         .map(|file| format!("- `{file}`"))
         .collect::<Vec<_>>();
 
-    let case_spec = encode_case_spec(case);
     let repl_url = build_repl_url(case, options);
-    let fixture_command = format!(
-        "cargo run -p acyclic_output_fuzz --bin generate_fixture -- --seed {} --case '{}' --out ./fixtures/seed-{}",
-        case.seed, case_spec, case.seed
-    );
+    let fixture_command = fixture_command(case);
     let input_static_edges = if input_static_edge_lines.is_empty() {
         "- (none)".to_string()
     } else {

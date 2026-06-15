@@ -7,6 +7,10 @@ publish = false
 [lib]
 path = "lib.rs"
 
+[[bin]]
+name = "generate_fixture"
+path = "generate_fixture.rs"
+
 [dependencies]
 proptest = { workspace = true }
 rolldown = { workspace = true }

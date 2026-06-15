@@ -7,10 +7,6 @@ publish = false
 [lib]
 path = "lib.rs"
 
-[[bin]]
-name = "generate_fixture"
-path = "generate_fixture.rs"
-
 [dependencies]
 output_fuzz_common = { path = "../output_fuzz_common" }
 proptest = { workspace = true }

@@ -363,7 +363,7 @@ pub async fn run_deterministic_check(case: GraphCase) -> Result<(), String> {
             collect_chunk_info(&output)
         };
 
-        if let Err(why) = compare_chunk_info(&baseline, &chunks, case.seed, iteration) {
+        if let Err(why) = compare_chunk_info(&baseline, &chunks, &case, iteration) {
             std::fs::remove_dir_all(&fixture_dir).ok();
             return Err(why);
         }
@@ -376,51 +376,66 @@ pub async fn run_deterministic_check(case: GraphCase) -> Result<(), String> {
 fn compare_chunk_info(
     baseline: &[ChunkInfo],
     chunks: &[ChunkInfo],
-    seed: u64,
+    case: &GraphCase,
     iteration: usize,
 ) -> Result<(), String> {
-    if baseline.len() != chunks.len() {
-        return Err(format!(
-            "Nondeterministic output: baseline produced {} chunks, iteration {iteration} produced {} chunks (seed {seed})",
+    let summary = if baseline.len() != chunks.len() {
+        format!(
+            "Nondeterministic output: baseline produced {} chunks, iteration {iteration} produced {} chunks",
             baseline.len(),
             chunks.len(),
-        ));
-    }
+        )
+    } else {
+        let mut summary = None;
+        for (a, b) in baseline.iter().zip(chunks.iter()) {
+            if a.filename != b.filename {
+                summary = Some(format!(
+                    "Nondeterministic output: chunk filenames differ at iteration {iteration}: '{}' vs '{}'",
+                    a.filename, b.filename,
+                ));
+                break;
+            }
+            if a.code != b.code {
+                summary = Some(format!(
+                    "Nondeterministic output: code differs for chunk '{}' at iteration {iteration}",
+                    a.filename,
+                ));
+                break;
+            }
+            if a.imports != b.imports {
+                summary = Some(format!(
+                    "Nondeterministic output: imports differ for chunk '{}' at iteration {iteration}",
+                    a.filename,
+                ));
+                break;
+            }
+            if a.exports != b.exports {
+                summary = Some(format!(
+                    "Nondeterministic output: exports differ for chunk '{}' at iteration {iteration}",
+                    a.filename,
+                ));
+                break;
+            }
+            if a.dynamic_imports != b.dynamic_imports {
+                summary = Some(format!(
+                    "Nondeterministic output: dynamic_imports differ for chunk '{}' at iteration {iteration}",
+                    a.filename,
+                ));
+                break;
+            }
+        }
+        match summary {
+            Some(summary) => summary,
+            None => return Ok(()),
+        }
+    };
 
-    for (a, b) in baseline.iter().zip(chunks.iter()) {
-        if a.filename != b.filename {
-            return Err(format!(
-                "Nondeterministic output: chunk filenames differ at iteration {iteration}: '{}' vs '{}' (seed {seed})",
-                a.filename, b.filename,
-            ));
-        }
-        if a.code != b.code {
-            return Err(format!(
-                "Nondeterministic output: code differs for chunk '{}' at iteration {iteration} (seed {seed})",
-                a.filename,
-            ));
-        }
-        if a.imports != b.imports {
-            return Err(format!(
-                "Nondeterministic output: imports differ for chunk '{}' at iteration {iteration} (seed {seed})",
-                a.filename,
-            ));
-        }
-        if a.exports != b.exports {
-            return Err(format!(
-                "Nondeterministic output: exports differ for chunk '{}' at iteration {iteration} (seed {seed})",
-                a.filename,
-            ));
-        }
-        if a.dynamic_imports != b.dynamic_imports {
-            return Err(format!(
-                "Nondeterministic output: dynamic_imports differ for chunk '{}' at iteration {iteration} (seed {seed})",
-                a.filename,
-            ));
-        }
-    }
-
-    Ok(())
+    Err(format!(
+        "{summary} (seed {seed})\n\nReproduce:\n```bash\n{cmd}\n```",
+        summary = summary,
+        seed = case.seed,
+        cmd = fixture_command(case),
+    ))
 }
 
 pub struct ChunkInfo {
@@ -813,6 +828,18 @@ fn decode_external_spec(value: &str) -> Result<(usize, Vec<(usize, usize)>), Str
     Ok((count, edges))
 }
 
+/// Markdown-friendly shell command that regenerates the fixture for `case`
+/// using the `generate_fixture` binary in this crate. Shared between the
+/// acyclic and deterministic fuzz failure messages so any reported failure
+/// can be reproduced with one copy-pasteable command.
+pub fn fixture_command(case: &GraphCase) -> String {
+    format!(
+        "cargo run -p output_fuzz_common --bin generate_fixture -- --seed {seed} --case '{spec}' --out ./fixtures/seed-{seed}",
+        seed = case.seed,
+        spec = encode_case_spec(case),
+    )
+}
+
 pub fn encode_case_spec(case: &GraphCase) -> String {
     format!(
         "n={n};e={e};c={c};s={s};d={d};r={r};x={x};xs={xs};p={p};o={o};t={t};m={m}",
@@ -1034,7 +1061,7 @@ fn render_rolldown_config_js(case: &GraphCase, options: &BundlerOptions) -> Stri
 
     let config = format!(
         concat!(
-            "// Generated by `cargo run -p acyclic_output_fuzz --bin generate_fixture -- --seed {seed}`\n",
+            "// Generated by `cargo run -p output_fuzz_common --bin generate_fixture -- --seed {seed}`\n",
             "export default {{\n",
             "  input: {{\n",
             "{inputs}\n",

@@ -54,6 +54,6 @@ fn main() -> Result<(), String> {
 
 fn print_help() {
     println!(
-        "Usage: cargo run -p acyclic_output_fuzz --bin generate_fixture -- --seed <u64> [--case <spec>] [--out <dir>]"
+        "Usage: cargo run -p output_fuzz_common --bin generate_fixture -- --seed <u64> [--case <spec>] [--out <dir>]"
     );
 }
