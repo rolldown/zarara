@@ -29,7 +29,7 @@ When a failure is found, the test prints markdown with:
   - Determinism property test (covers [rolldown#9754](https://github.com/rolldown/rolldown/issues/9754))
 - `rolldown/`
   - Rolldown source as a submodule dependency for the harness
-- `.github/workflows/acyclic_output_fuzz.yml`
+- `.github/workflows/output_fuzz.yml`
   - scheduled fuzz workflow + issue tracking
 
 ## Fuzz Tests
@@ -83,7 +83,7 @@ You can also open the printed `### REPL URL` directly in `https://repl.rolldown.
 
 ## CI Workflow
 
-The workflow in `.github/workflows/acyclic_output_fuzz.yml`:
+The workflow in `.github/workflows/output_fuzz.yml`:
 
 - runs daily and on manual dispatch
 - uploads the fuzz log artifact

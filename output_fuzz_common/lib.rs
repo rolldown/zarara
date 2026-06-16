@@ -430,10 +430,23 @@ fn compare_chunk_info(
         }
     };
 
+    // Mirror the `## Failed Seed` … `### Generate Fixture` envelope used by
+    // `acyclic_output_fuzz::format_failure_message` so the CI workflow's
+    // tracking-issue regex (`## Failed Seed[\s\S]*?### Generate Fixture …`)
+    // catches determinism failures too.
     Err(format!(
-        "{summary} (seed {seed})\n\nReproduce:\n```bash\n{cmd}\n```",
-        summary = summary,
+        concat!(
+            "## Failed Seed\n",
+            "`{seed}`\n\n",
+            "## Nondeterministic Output\n",
+            "{summary}\n\n",
+            "### Generate Fixture\n",
+            "```bash\n",
+            "{cmd}\n",
+            "```",
+        ),
         seed = case.seed,
+        summary = summary,
         cmd = fixture_command(case),
     ))
 }
