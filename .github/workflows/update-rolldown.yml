@@ -76,10 +76,16 @@ jobs:
           sed -i "s/^oxc = \".*\"/oxc = \"$oxc_version\"/" Cargo.toml
           cargo update -p oxc
 
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Create pull request
         if: steps.check.outputs.needed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           CURRENT_TAG: ${{ steps.current.outputs.tag }}
           LATEST_TAG: ${{ steps.latest.outputs.tag }}
         run: |
