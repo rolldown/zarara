@@ -96,7 +96,15 @@ fn dynamic_hub_case_strategy() -> impl Strategy<Value = GraphCase> {
         1usize..=MAX_EXTERNAL_MODULES,
     )
         .prop_flat_map(
-            move |(seed, node_count, preserve_entry_signatures_index, strict_execution_order, treeshake, minify_internal_exports, external_module_count)| {
+            move |(
+                seed,
+                node_count,
+                preserve_entry_signatures_index,
+                strict_execution_order,
+                treeshake,
+                minify_internal_exports,
+                external_module_count,
+            )| {
                 let max_entries = (node_count - 2).min(3);
                 let max_children = (node_count - 2).min(4);
                 (
@@ -261,10 +269,10 @@ fn validate_output_js_syntax(output: &rolldown::BundleOutput) -> Result<(), Stri
                 ..ParseOptions::default()
             })
             .parse();
-        if ret.panicked || !ret.errors.is_empty() {
+        if ret.panicked || ret.diagnostics.has_errors() {
             let errors_str = ret
-                .errors
-                .iter()
+                .diagnostics
+                .errors()
                 .map(|e| e.clone().with_source_code(chunk.code.clone()).to_string())
                 .collect::<Vec<_>>()
                 .join("\n");
@@ -304,10 +312,7 @@ fn compute_expected_exports(case: &GraphCase, node_index: usize) -> Vec<String> 
     exports
 }
 
-fn validate_entry_exports(
-    case: &GraphCase,
-    output: &rolldown::BundleOutput,
-) -> Result<(), String> {
+fn validate_entry_exports(case: &GraphCase, output: &rolldown::BundleOutput) -> Result<(), String> {
     if !matches!(
         case.preserve_entry_signatures,
         PreserveEntrySignatures::Strict
@@ -329,13 +334,9 @@ fn validate_entry_exports(
         };
 
         // Find which input node this entry chunk corresponds to
-        let node_index = case
-            .entry_nodes
-            .iter()
-            .copied()
-            .find(|&idx| {
-                entry_set.contains(&idx) && facade_id.ends_with(&module_filename(case, idx))
-            });
+        let node_index = case.entry_nodes.iter().copied().find(|&idx| {
+            entry_set.contains(&idx) && facade_id.ends_with(&module_filename(case, idx))
+        });
         let Some(node_index) = node_index else {
             continue;
         };
@@ -578,12 +579,12 @@ fn format_failure_message(
     } else {
         input_external_dynamic_edge_lines.join("\n")
     };
-    let input_external_static_default_edges =
-        if input_external_static_default_edge_lines.is_empty() {
-            "- (none)".to_string()
-        } else {
-            input_external_static_default_edge_lines.join("\n")
-        };
+    let input_external_static_default_edges = if input_external_static_default_edge_lines.is_empty()
+    {
+        "- (none)".to_string()
+    } else {
+        input_external_static_default_edge_lines.join("\n")
+    };
     let output_files_markdown = if output_file_lines.is_empty() {
         "- (none)".to_string()
     } else {
@@ -722,8 +723,8 @@ mod cjs_cycle_tests {
         let static_edges = vec![(0, 2), (1, 0), (1, 2), (2, 0), (3, 0)];
         let chunk_has_cjs = vec![false, false, false, false];
 
-        let cycle = graph_cycle_checker::find_cycle(4, &static_edges)
-            .expect("output graph is cyclic");
+        let cycle =
+            graph_cycle_checker::find_cycle(4, &static_edges).expect("output graph is cyclic");
 
         assert!(
             !is_ignored(&cycle, &chunk_has_cjs),
@@ -739,8 +740,8 @@ mod cjs_cycle_tests {
         let static_edges = vec![(0, 1), (1, 2), (2, 0)];
         let chunk_has_cjs = vec![false, true, false];
 
-        let cycle = graph_cycle_checker::find_cycle(3, &static_edges)
-            .expect("output graph is cyclic");
+        let cycle =
+            graph_cycle_checker::find_cycle(3, &static_edges).expect("output graph is cyclic");
 
         assert!(
             !is_immediate_cycle(&cycle),
@@ -759,8 +760,8 @@ mod cjs_cycle_tests {
         let static_edges = vec![(0, 1), (1, 0), (3, 0)];
         let chunk_has_cjs = vec![false, false, false, true];
 
-        let cycle = graph_cycle_checker::find_cycle(4, &static_edges)
-            .expect("output graph is cyclic");
+        let cycle =
+            graph_cycle_checker::find_cycle(4, &static_edges).expect("output graph is cyclic");
 
         assert!(
             !is_ignored(&cycle, &chunk_has_cjs),
