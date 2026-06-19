@@ -131,7 +131,15 @@ fn dynamic_hub_case_strategy() -> impl Strategy<Value = GraphCase> {
         1usize..=MAX_EXTERNAL_MODULES,
     )
         .prop_flat_map(
-            move |(seed, node_count, preserve_entry_signatures_index, strict_execution_order, treeshake, minify_internal_exports, external_module_count)| {
+            move |(
+                seed,
+                node_count,
+                preserve_entry_signatures_index,
+                strict_execution_order,
+                treeshake,
+                minify_internal_exports,
+                external_module_count,
+            )| {
                 // Pick how many entries (1..3) and how many children (2..min(4, remaining))
                 let max_entries = (node_count - 2).min(3);
                 let max_children = (node_count - 2).min(4);
@@ -260,7 +268,15 @@ fn acyclic_graph_case_strategy() -> impl Strategy<Value = GraphCase> {
         1usize..=MAX_EXTERNAL_MODULES,
     )
         .prop_flat_map(
-            |(seed, node_count, preserve_entry_signatures_index, strict_execution_order, treeshake, minify_internal_exports, external_module_count)| {
+            |(
+                seed,
+                node_count,
+                preserve_entry_signatures_index,
+                strict_execution_order,
+                treeshake,
+                minify_internal_exports,
+                external_module_count,
+            )| {
                 let static_edge_slots = node_count * (node_count - 1) / 2;
                 let dynamic_edge_slots = node_count * (node_count - 1);
                 let external_dynamic_slots = node_count * external_module_count;
@@ -506,10 +522,10 @@ fn validate_output_js_syntax(output: &rolldown::BundleOutput) -> Result<(), Stri
                 ..ParseOptions::default()
             })
             .parse();
-        if ret.panicked || !ret.errors.is_empty() {
+        if ret.panicked || ret.diagnostics.errors().next().is_some() {
             let errors_str = ret
-                .errors
-                .iter()
+                .diagnostics
+                .errors()
                 .map(|e| e.clone().with_source_code(chunk.code.clone()).to_string())
                 .collect::<Vec<_>>()
                 .join("\n");
@@ -549,10 +565,7 @@ fn compute_expected_exports(case: &GraphCase, node_index: usize) -> Vec<String> 
     exports
 }
 
-fn validate_entry_exports(
-    case: &GraphCase,
-    output: &rolldown::BundleOutput,
-) -> Result<(), String> {
+fn validate_entry_exports(case: &GraphCase, output: &rolldown::BundleOutput) -> Result<(), String> {
     if !matches!(
         case.preserve_entry_signatures,
         PreserveEntrySignatures::Strict
@@ -574,13 +587,9 @@ fn validate_entry_exports(
         };
 
         // Find which input node this entry chunk corresponds to
-        let node_index = case
-            .entry_nodes
-            .iter()
-            .copied()
-            .find(|&idx| {
-                entry_set.contains(&idx) && facade_id.ends_with(&module_filename(case, idx))
-            });
+        let node_index = case.entry_nodes.iter().copied().find(|&idx| {
+            entry_set.contains(&idx) && facade_id.ends_with(&module_filename(case, idx))
+        });
         let Some(node_index) = node_index else {
             continue;
         };
@@ -772,7 +781,11 @@ fn collect_chunk_info(output: &rolldown::BundleOutput) -> Vec<ChunkInfo> {
                 code: chunk.code.clone(),
                 imports: chunk.imports.iter().map(|s| s.to_string()).collect(),
                 exports: chunk.exports.iter().map(|s| s.to_string()).collect(),
-                dynamic_imports: chunk.dynamic_imports.iter().map(|s| s.to_string()).collect(),
+                dynamic_imports: chunk
+                    .dynamic_imports
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect(),
             }),
             Output::Asset(_) => None,
         })
@@ -1002,12 +1015,8 @@ fn render_graph_modules(case: &GraphCase) -> Vec<(String, String)> {
                 source.push_str(&format!(
                     "var use_{from}_{destination} = imported_{from}_{destination};\n"
                 ));
-                source.push_str(&format!(
-                    "use_{from}_{destination}.ref = {from};\n"
-                ));
-                source.push_str(&format!(
-                    "export {{ use_{from}_{destination} }};\n"
-                ));
+                source.push_str(&format!("use_{from}_{destination}.ref = {from};\n"));
+                source.push_str(&format!("export {{ use_{from}_{destination} }};\n"));
             }
         }
         for destination in &dynamic_outgoing[from] {
@@ -1321,8 +1330,7 @@ fn parse_case_spec(seed: u64, case_spec: &str) -> Result<GraphCase, String> {
         dynamic_edges.ok_or_else(|| "missing case field `d`".to_string())?,
         node_count,
     );
-    let (external_module_count, external_dynamic_edges) =
-        external_spec.unwrap_or((0, Vec::new()));
+    let (external_module_count, external_dynamic_edges) = external_spec.unwrap_or((0, Vec::new()));
     let external_dynamic_edges = {
         let mut edges = external_dynamic_edges;
         edges.retain(|(from, ext)| *from < node_count && *ext < external_module_count);
@@ -1720,8 +1728,8 @@ mod cjs_cycle_tests {
         let static_edges = vec![(0, 2), (1, 0), (1, 2), (2, 0), (3, 0)];
         let chunk_has_cjs = vec![false, false, false, false];
 
-        let cycle = graph_cycle_checker::find_cycle(4, &static_edges)
-            .expect("output graph is cyclic");
+        let cycle =
+            graph_cycle_checker::find_cycle(4, &static_edges).expect("output graph is cyclic");
 
         assert!(
             !is_ignored(&cycle, &chunk_has_cjs),
@@ -1738,8 +1746,8 @@ mod cjs_cycle_tests {
         let static_edges = vec![(0, 1), (1, 2), (2, 0)];
         let chunk_has_cjs = vec![false, true, false];
 
-        let cycle = graph_cycle_checker::find_cycle(3, &static_edges)
-            .expect("output graph is cyclic");
+        let cycle =
+            graph_cycle_checker::find_cycle(3, &static_edges).expect("output graph is cyclic");
 
         assert!(
             !is_immediate_cycle(&cycle),
@@ -1759,8 +1767,8 @@ mod cjs_cycle_tests {
         let static_edges = vec![(0, 1), (1, 0), (3, 0)];
         let chunk_has_cjs = vec![false, false, false, true];
 
-        let cycle = graph_cycle_checker::find_cycle(4, &static_edges)
-            .expect("output graph is cyclic");
+        let cycle =
+            graph_cycle_checker::find_cycle(4, &static_edges).expect("output graph is cyclic");
 
         assert!(
             !is_ignored(&cycle, &chunk_has_cjs),
