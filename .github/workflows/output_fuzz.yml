@@ -1,4 +1,4 @@
-name: Acyclic Output Fuzz
+name: Output Fuzz
 
 on:
   schedule:
@@ -10,7 +10,7 @@ on:
 permissions: {}
 
 jobs:
-  acyclic-output-fuzz:
+  output-fuzz:
     if: github.event_name != 'pull_request' || github.event.label.name == 'run-tests'
     permissions:
       contents: read
@@ -28,21 +28,21 @@ jobs:
         with:
           cache-key: debug-build
 
-      - name: Run acyclic output fuzz test
+      - name: Run output fuzz tests
         id: fuzz
         continue-on-error: true
         env:
           PROPTEST_CASES: 5000
         run: |
           set -o pipefail
-          timeout 900 cargo test --manifest-path acyclic_output_fuzz/Cargo.toml -- --nocapture 2>&1 | tee acyclic_output_fuzz.log
+          timeout 900 cargo test --workspace -- --nocapture 2>&1 | tee output_fuzz.log
 
       - name: Upload fuzz logs
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: acyclic-output-fuzz-log-${{ github.run_id }}
-          path: acyclic_output_fuzz.log
+          name: output-fuzz-log-${{ github.run_id }}
+          path: output_fuzz.log
           if-no-files-found: ignore
 
       - name: Mark workflow as failed
@@ -50,8 +50,8 @@ jobs:
         run: exit 1
 
   update-tracking-issue:
-    needs: acyclic-output-fuzz
-    if: always() && needs.acyclic-output-fuzz.result == 'failure' && github.event_name != 'pull_request'
+    needs: output-fuzz
+    if: always() && needs.output-fuzz.result == 'failure' && github.event_name != 'pull_request'
     permissions:
       issues: write
     runs-on: ubuntu-latest
@@ -59,7 +59,7 @@ jobs:
       - name: Download fuzz logs
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: acyclic-output-fuzz-log-${{ github.run_id }}
+          name: output-fuzz-log-${{ github.run_id }}
 
       - name: Create or update tracking issue
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -69,13 +69,13 @@ jobs:
             const fs = require('node:fs');
 
             const { owner, repo } = context.repo;
-            const title = 'Daily acyclic output fuzz failure';
+            const title = 'Daily output fuzz failure';
             const label = 'zarara-fuzz';
             const nowUtc = new Date().toISOString();
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
             const sha = context.sha;
-            const log = fs.existsSync('acyclic_output_fuzz.log')
-              ? fs.readFileSync('acyclic_output_fuzz.log', 'utf8')
+            const log = fs.existsSync('output_fuzz.log')
+              ? fs.readFileSync('output_fuzz.log', 'utf8')
               : '';
 
             const failureMarkdownMatches = [
@@ -83,7 +83,7 @@ jobs:
             ];
             const failureMarkdown = failureMarkdownMatches.length > 0
               ? failureMarkdownMatches.at(-1)[0].trim()
-              : 'Failed to parse markdown failure output from `acyclic_output_fuzz.log`.';
+              : 'Failed to parse markdown failure output from `output_fuzz.log`.';
 
             async function ensureLabelExists() {
               try {
@@ -97,7 +97,7 @@ jobs:
                   repo,
                   name: label,
                   color: 'd73a4a',
-                  description: 'Daily acyclic output fuzz failures',
+                  description: 'Daily output fuzz failures',
                 });
               }
             }
@@ -136,7 +136,7 @@ jobs:
                 title,
                 labels: [label],
                 body: [
-                  'Daily acyclic-output fuzz guard failed.',
+                  'Daily output fuzz guard failed.',
                   '',
                   'This issue stays open until manually closed.',
                 ].join('\n'),

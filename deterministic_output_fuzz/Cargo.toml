@@ -1,5 +1,5 @@
 [package]
-name = "acyclic_output_fuzz"
+name = "deterministic_output_fuzz"
 version = "0.1.0"
 edition = "2024"
 publish = false
@@ -10,7 +10,4 @@ path = "lib.rs"
 [dependencies]
 output_fuzz_common = { path = "../output_fuzz_common" }
 proptest = { workspace = true }
-rolldown = { workspace = true }
-rolldown_common = { workspace = true }
 tokio = { workspace = true }
-oxc = { workspace = true }

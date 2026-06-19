@@ -1,5 +1,5 @@
 [package]
-name = "acyclic_output_fuzz"
+name = "output_fuzz_common"
 version = "0.1.0"
 edition = "2024"
 publish = false
@@ -7,10 +7,15 @@ publish = false
 [lib]
 path = "lib.rs"
 
+[[bin]]
+name = "generate_fixture"
+path = "generate_fixture.rs"
+
 [dependencies]
-output_fuzz_common = { path = "../output_fuzz_common" }
 proptest = { workspace = true }
 rolldown = { workspace = true }
 rolldown_common = { workspace = true }
 tokio = { workspace = true }
-oxc = { workspace = true }
+base64 = { workspace = true }
+flate2 = { workspace = true }
+serde_json = { workspace = true }

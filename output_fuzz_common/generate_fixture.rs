@@ -41,10 +41,10 @@ fn main() -> Result<(), String> {
 
     let seed = seed.ok_or_else(|| "missing required --seed <u64>".to_string())?;
     let dir = if let Some(case_spec) = case {
-        acyclic_output_fuzz::generate_fixture_from_case_spec(seed, &case_spec, out)
+        output_fuzz_common::generate_fixture_from_case_spec(seed, &case_spec, out)
             .map_err(|err| format!("failed to generate fixture from --case: {err}"))?
     } else {
-        acyclic_output_fuzz::generate_fixture_from_seed(seed, out)
+        output_fuzz_common::generate_fixture_from_seed(seed, out)
             .map_err(|err| format!("failed to generate fixture from --seed: {err}"))?
     };
 
@@ -54,6 +54,6 @@ fn main() -> Result<(), String> {
 
 fn print_help() {
     println!(
-        "Usage: cargo run -p acyclic_output_fuzz --bin generate_fixture -- --seed <u64> [--case <spec>] [--out <dir>]"
+        "Usage: cargo run -p output_fuzz_common --bin generate_fixture -- --seed <u64> [--case <spec>] [--out <dir>]"
     );
 }
