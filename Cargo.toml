@@ -10,5 +10,5 @@ base64 = "0.22.1"
 flate2 = "1.1.9"
 oxc = "0.137.0"
 proptest = "1.11.0"
-serde_json = "1.0.149"
+serde_json = "1.0.150"
 tokio = { version = "1.52.3", features = ["rt"] }
