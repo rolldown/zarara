@@ -269,7 +269,7 @@ fn validate_output_js_syntax(output: &rolldown::BundleOutput) -> Result<(), Stri
                 ..ParseOptions::default()
             })
             .parse();
-        if ret.panicked || ret.diagnostics.has_errors() {
+        if ret.fatal_error || ret.diagnostics.has_errors() {
             let errors_str = ret
                 .diagnostics
                 .errors()
